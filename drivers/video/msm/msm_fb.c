@@ -198,7 +198,7 @@ static void msm_fb_set_bl_brightness(struct led_classdev *led_cdev,
 			MAX_BACKLIGHT_BRIGHTNESS - 1) /
 			(MAX_BACKLIGHT_BRIGHTNESS - 1) / 2;
 
-	down(&mfd->sem);
+        down(&mfd->sem);
 	msm_fb_set_backlight(mfd, bl_lvl);
 	up(&mfd->sem);
 }
@@ -840,11 +840,7 @@ static void msmfb_early_resume(struct early_suspend *h)
 #endif
 
 static int unset_bl_level, bl_updated;
-#if defined(CONFIG_BACKLIGHT_LM3530)
-static int bl_level_old = 0x2A;
-#else
 static int bl_level_old;
-#endif
 
 static int mdp_bl_scale_config(struct msm_fb_data_type *mfd,
 						struct mdp_bl_scale_data *data)
