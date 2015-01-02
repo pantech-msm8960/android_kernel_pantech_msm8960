@@ -26,6 +26,11 @@
 #include <linux/mfd/pm8xxx/pwm.h>
 #include <linux/leds-pm8xxx.h>
 
+#ifdef CONFIG_PANTECH_LEDS_PM8XXX
+#include <linux/miscdevice.h>
+#include <linux/fs.h>
+#endif /* CONFIG_PANTECH_LEDS_PM8XXX */
+
 #define SSBI_REG_ADDR_DRV_KEYPAD	0x48
 #define PM8XXX_DRV_KEYPAD_BL_MASK	0xf0
 #define PM8XXX_DRV_KEYPAD_BL_SHIFT	0x04
@@ -167,6 +172,22 @@ static const struct supported_leds led_map[] = {
 	LED_MAP(PM8XXX_VERSION_8038, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1),
 };
 
+#ifdef CONFIG_PANTECH_LEDS_PM8XXX
+/* -------------------------------------------------------------------- */
+/* debug option */
+/* -------------------------------------------------------------------- */
+//#define LED_DBG_ENABLE
+#ifdef LED_DBG_ENABLE
+#define dbg(fmt, args...)   printk("[LED]" fmt, ##args)
+#else
+#define dbg(fmt, args...)
+#endif
+#define dbg_func_in()       dbg("[FUNC_IN] %s\n", __func__)
+#define dbg_func_out()      dbg("[FUNC_OUT] %s\n", __func__)
+#define dbg_line()          dbg("[LINE] %d(%s)\n", __LINE__, __func__)
+/* -------------------------------------------------------------------- */
+#endif /* CONFIG_PANTECH_LEDS_PM8XXX */
+
 /**
  * struct pm8xxx_led_data - internal led data structure
  * @led_classdev - led class device
@@ -204,10 +225,49 @@ struct pm8xxx_led_data {
 	u16			pwm_pause_lo;
 };
 
-static void led_kp_set(struct pm8xxx_led_data *led, enum led_brightness value)
+#ifdef CONFIG_PANTECH_LEDS_PM8XXX
+static struct pm8xxx_led_data *led_ioctl;   // mirinae added
+#endif /* CONFIG_PANTECH_LEDS_PM8XXX */
+
+#ifdef CONFIG_PANTECH_LEDS_PM8XXX
+static long leds_fops_ioctl(struct file *filp,unsigned int cmd, unsigned long arg);
+static void pm8xxx_led_set(struct led_classdev *led_cdev, enum led_brightness value);
+static void led_kp_set(struct pm8xxx_led_data *led, enum led_brightness value);
+static void led_lc_set(struct pm8xxx_led_data *led, enum led_brightness value);
+static void leds_fops_ioctl_set(struct pm8xxx_led_data *led, enum led_brightness value);
+
+static struct file_operations leds_fops = {
+	.owner = THIS_MODULE,
+	.unlocked_ioctl = leds_fops_ioctl,
+};
+
+static struct miscdevice led_event = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.name = "led_fops",
+	.fops = &leds_fops,
+};
+
+static long leds_fops_ioctl( struct file *filp, unsigned int cmd, unsigned long arg) 
+{
+	u8 level;
+
+	dbg("leds_fops_ioctl : %d\n",cmd);
+	dbg("leds_fops_ioctl : name = %s\n",led_ioctl->cdev.name);
+
+	pm8xxx_led_set(&led_ioctl->cdev, cmd);
+	level = (cmd & 0xF0) >> 4;
+	leds_fops_ioctl_set(led_ioctl, level);
+
+	return true;
+}
+
+static void leds_fops_ioctl_set(struct pm8xxx_led_data *led, enum led_brightness value)
 {
 	int rc;
 	u8 level;
+
+	dbg_func_in();
+	dbg("[LED: led_kp_set] value = %d \n", value);
 
 	level = (value << PM8XXX_DRV_KEYPAD_BL_SHIFT) &
 				 PM8XXX_DRV_KEYPAD_BL_MASK;
@@ -215,11 +275,47 @@ static void led_kp_set(struct pm8xxx_led_data *led, enum led_brightness value)
 	led->reg &= ~PM8XXX_DRV_KEYPAD_BL_MASK;
 	led->reg |= level;
 
+	dbg("[LED: led_kp_set] level = %d \n", level);  // mirinae
+
 	rc = pm8xxx_writeb(led->dev->parent, SSBI_REG_ADDR_DRV_KEYPAD,
 								led->reg);
 	if (rc < 0)
 		dev_err(led->cdev.dev,
 			"can't set keypad backlight level rc=%d\n", rc);
+
+	dbg_func_out();
+}
+#endif /* CONFIG_PANTECH_LEDS_PM8XXX */
+
+static void led_kp_set(struct pm8xxx_led_data *led, enum led_brightness value)
+{
+	int rc;
+	u8 level;
+
+#ifdef CONFIG_PANTECH_LEDS_PM8XXX
+	dbg_func_in();
+	dbg("[LED: led_kp_set] value = %d \n", value);
+#endif /* CONFIG_PANTECH_LEDS_PM8XXX */
+
+	level = (value << PM8XXX_DRV_KEYPAD_BL_SHIFT) &
+				 PM8XXX_DRV_KEYPAD_BL_MASK;
+
+	led->reg &= ~PM8XXX_DRV_KEYPAD_BL_MASK;
+	led->reg |= level;
+
+#ifdef CONFIG_PANTECH_LEDS_PM8XXX
+	dbg("[LED: led_kp_set] level = %d \n", level);  // mirinae
+#endif /* CONFIG_PANTECH_LEDS_PM8XXX */
+
+	rc = pm8xxx_writeb(led->dev->parent, SSBI_REG_ADDR_DRV_KEYPAD,
+								led->reg);
+	if (rc < 0)
+		dev_err(led->cdev.dev,
+			"can't set keypad backlight level rc=%d\n", rc);
+
+#ifdef CONFIG_PANTECH_LEDS_PM8XXX
+	dbg_func_out();
+#endif /* CONFIG_PANTECH_LEDS_PM8XXX */
 }
 
 static void led_lc_set(struct pm8xxx_led_data *led, enum led_brightness value)
@@ -227,10 +323,21 @@ static void led_lc_set(struct pm8xxx_led_data *led, enum led_brightness value)
 	int rc, offset;
 	u8 level;
 
+#ifdef CONFIG_PANTECH_LEDS_PM8XXX
+	dbg_func_in();
+	dbg("[LED: led_lc_set] value = %d \n", value);
+#endif /* CONFIG_PANTECH_LEDS_PM8XXX */
+
 	level = (value << PM8XXX_DRV_LED_CTRL_SHIFT) &
 				PM8XXX_DRV_LED_CTRL_MASK;
 
+#ifdef CONFIG_PANTECH_LEDS_PM8XXX
+	dbg("[LED: led_lc_set_level] level = %d \n", level);
 	offset = PM8XXX_LED_OFFSET(led->id);
+	dbg("[LED: PM8XXX_LED_OFFSET] offset = %d \n", offset);
+#else /* QCOM Original */
+	offset = PM8XXX_LED_OFFSET(led->id);
+#endif /* CONFIG_PANTECH_LEDS_PM8XXX */
 
 	led->reg &= ~PM8XXX_DRV_LED_CTRL_MASK;
 	led->reg |= level;
@@ -240,6 +347,10 @@ static void led_lc_set(struct pm8xxx_led_data *led, enum led_brightness value)
 	if (rc)
 		dev_err(led->cdev.dev, "can't set (%d) led value rc=%d\n",
 				led->id, rc);
+
+#ifdef CONFIG_PANTECH_LEDS_PM8XXX
+	dbg_func_out();
+#endif /* CONFIG_PANTECH_LEDS_PM8XXX */
 }
 
 static void
@@ -536,6 +647,10 @@ static int pm8xxx_led_pwm_work(struct pm8xxx_led_data *led)
 
 	level = pm8xxx_adjust_brightness(&led->cdev, led->cdev.brightness);
 
+#ifdef CONFIG_PANTECH_LEDS_PM8XXX
+	dbg("pm8xxx_led_pwm_work : %d\n", led->id);
+#endif /* CONFIG_PANTECH_LEDS_PM8XXX */
+
 	if (led->pwm_duty_cycles == NULL) {
 		duty_us = (led->pwm_period_us * level) / LED_FULL;
 		rc = pwm_config(led->pwm_dev, duty_us, led->pwm_period_us);
@@ -629,6 +744,18 @@ static void pm8xxx_led_set(struct led_classdev *led_cdev,
 {
 	struct	pm8xxx_led_data *led;
 
+#ifdef CONFIG_PANTECH_LEDS_PM8XXX
+	dbg_func_in();
+
+	dbg("[LED : pm8xxx_led_set] value = %d \n", value);
+
+#if 0   // mirinae added
+	value = (value & 0xF0) >> 4;
+	dbg("--> value = %d\n", value);
+#endif
+	dbg("--> value = %d\n", value);
+#endif /* CONFIG_PANTECH_LEDS_PM8XXX */
+
 	led = container_of(led_cdev, struct pm8xxx_led_data, cdev);
 
 	if (value < LED_OFF || value > led->cdev.max_brightness) {
@@ -647,6 +774,10 @@ static void pm8xxx_led_set(struct led_classdev *led_cdev,
 static int pm8xxx_set_led_mode_and_adjust_brightness(struct pm8xxx_led_data *led,
 		enum pm8xxx_led_modes led_mode, int max_current)
 {
+#ifdef CONFIG_PANTECH_LEDS_PM8XXX
+	dbg("[LED] led_mode= (%d) max_current=%d\n", led_mode, max_current);
+#endif /* CONFIG_PANTECH_LEDS_PM8XXX */
+
 	switch (led->id) {
 	case PM8XXX_ID_LED_0:
 	case PM8XXX_ID_LED_1:
@@ -662,6 +793,11 @@ static int pm8xxx_set_led_mode_and_adjust_brightness(struct pm8xxx_led_data *led
 	case PM8XXX_ID_FLASH_LED_1:
 		led->adjust_brightness = max_current /
 						PM8XXX_ID_FLASH_CURRENT_FACTOR;
+
+#ifdef CONFIG_PANTECH_LEDS_PM8XXX
+		dbg("[LED] led->adjust_brightness : %d\n", led->adjust_brightness);
+#endif /* CONFIG_PANTECH_LEDS_PM8XXX */
+
 		if (led->adjust_brightness > MAX_FLASH_BRIGHTNESS)
 			led->adjust_brightness = MAX_FLASH_BRIGHTNESS;
 
@@ -702,6 +838,11 @@ static enum led_brightness pm8xxx_led_get(struct led_classdev *led_cdev)
 	struct pm8xxx_led_data *led;
 
 	led = container_of(led_cdev, struct pm8xxx_led_data, cdev);
+
+#ifdef CONFIG_PANTECH_LEDS_PM8XXX
+	dbg("[LED] pm8xxx_led_get ID: %d\n", led->id);
+	dbg("[LED] pm8xxx_led_get BIRGHTNESS: %d\n", led->cdev.brightness);
+#endif /* CONFIG_PANTECH_LEDS_PM8XXX */
 
 	return led->cdev.brightness;
 }
@@ -1190,6 +1331,10 @@ static int __devinit pm8xxx_led_probe(struct platform_device *pdev)
 	bool found = false;
 	int rc, i, j;
 
+#ifdef CONFIG_PANTECH_LEDS_PM8XXX
+	dbg_func_in();
+#endif /* CONFIG_PANTECH_LEDS_PM8XXX */
+
 	if (pdata == NULL) {
 		dev_err(&pdev->dev, "platform data not supplied\n");
 		return -EINVAL;
@@ -1209,6 +1354,10 @@ static int __devinit pm8xxx_led_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+#ifdef CONFIG_PANTECH_LEDS_PM8XXX
+	dbg("[LED] pm8xxx_led_probe pdata->num_leds = %d\n",  pcore_data->num_leds);
+#endif /* CONFIG_PANTECH_LEDS_PM8XXX */
+
 	for (i = 0; i < pcore_data->num_leds; i++) {
 		curr_led	= &pcore_data->leds[i];
 		led_dat		= &led[i];
@@ -1222,6 +1371,12 @@ static int __devinit pm8xxx_led_probe(struct platform_device *pdev)
 		led_dat->max_current = led_cfg->max_current;
 		led_dat->lock_update = 0;
 		led_dat->blink = 0;
+
+#ifdef CONFIG_PANTECH_LEDS_PM8XXX
+		if(led_dat->id == PM8XXX_ID_LED_KB_LIGHT)   // mirinae added for TestMenu
+			led_ioctl = &led[i];
+		dbg("[LED] pm8xxx_led_probe led_dat->id = %d\n",  led_dat->id);
+#endif /* CONFIG_PANTECH_LEDS_PM8XXX */
 
 		if (!((led_dat->id >= PM8XXX_ID_LED_KB_LIGHT) &&
 				(led_dat->id < PM8XXX_ID_MAX))) {
@@ -1264,6 +1419,11 @@ static int __devinit pm8xxx_led_probe(struct platform_device *pdev)
 
 		rc = pm8xxx_set_led_mode_and_adjust_brightness(led_dat,
 					led_cfg->mode, led_cfg->max_current);
+
+#ifdef CONFIG_PANTECH_LEDS_PM8XXX
+		dbg("[LED] pm8xxx_set_led_mode_and_max_brightness: %d\n", rc);
+#endif /* CONFIG_PANTECH_LEDS_PM8XXX */
+
 		if (rc < 0)
 			goto fail_id_check;
 
@@ -1341,6 +1501,13 @@ static int __devinit pm8xxx_led_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "failed device_create_file(grpfreq)\n");
 		}
 	}
+
+#ifdef CONFIG_PANTECH_LEDS_PM8XXX
+	// mirinae added for TestMenu
+	misc_register(&led_event);
+
+	dbg_func_out();
+#endif /* CONFIG_PANTECH_LEDS_PM8XXX */
 
 	return 0;
 
