@@ -77,9 +77,24 @@
 						unsigned int)
 #define MSMFB_METADATA_GET  _IOW(MSMFB_IOCTL_MAGIC, 166, struct msmfb_metadata)
 
+#ifdef CONFIG_F_SKYDISP_LCD_RESET
+#define MSMFB_SKY_LCD_RESET_INIT    _IOW(MSMFB_IOCTL_MAGIC, 200, unsigned int)
+#endif
+#ifdef CONFIG_F_SKYDISP_LCD_FORCE_ONOFF 
+#define MSMFB_SKY_LCD_FORCE_ONOFF   _IOW(MSMFB_IOCTL_MAGIC, 201, unsigned int)
+#endif
+
+#ifdef CONFIG_F_SKYDISP_SMART_DIMMING 
+#define MSMFB_SKY_LCD_SMART_DIMMING_READ   _IOW(MSMFB_IOCTL_MAGIC, 202, char)
+#define MSMFB_SKY_LCD_SMART_DIMMING_WRITE  _IOW(MSMFB_IOCTL_MAGIC, 203, char)
+#endif
+
 #define FB_TYPE_3D_PANEL 0x10101010
 #define MDP_IMGTYPE2_START 0x10000
 #define MSMFB_DRIVER_VERSION	0xF9E8D701
+
+/* PLM 1430  kangms p14974 130215 */
+#define CONFIG_QUALCOMMM_FLOATINGPIPE_BUG_FIX
 
 enum {
 	NOTIFY_UPDATE_START,
@@ -598,7 +613,11 @@ struct mdp_mixer_info {
 	int z_order;
 };
 
+#ifdef CONFIG_QUALCOMMM_FLOATINGPIPE_BUG_FIX
 #define MAX_PIPE_PER_MIXER  5
+#else
+#define MAX_PIPE_PER_MIXER  4
+#endif
 
 struct msmfb_mixer_info_req {
 	int mixer_num;

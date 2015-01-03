@@ -42,6 +42,14 @@
 #include "msm_fb.h"
 #include "mdp4.h"
 
+/*video play rotate lockup CASE #01034021*/
+#define FEATURE_QUALCOMM_BUG_FIX_WRITEBACK_LOCKUP
+
+/* lived, 2013.03.11 fix for alpha-blending(alpha_drop value initialization) */
+#define PANTECH_LCD_QCPATCH_ALPHA_DROP_BUGFIX
+
+#define CONFIG_QUALCOMMM_FLOATINGPIPE_BUG_FIX
+
 #define VERSION_KEY_MASK	0xFFFFFF00
 
 struct mdp4_overlay_ctrl {
@@ -1755,7 +1763,11 @@ int mdp4_mixer_info(int mixer_num, struct mdp_mixer_info *info)
 
 	cnt = 0;
 	ndx = MDP4_MIXER_STAGE_BASE;
+#if defined(CONFIG_MACH_MSM8960_OSCAR)
+	for (ndx=0 ; ndx < OVERLAY_PIPE_MAX; ndx++) {
+#else /* QCOM Original */
 	for ( ; ndx < MDP4_MIXER_STAGE_MAX; ndx++) {
+#endif
 		pipe = &ctrl->plist[ndx];
 		if (pipe == NULL)
 			continue;
@@ -2283,7 +2295,9 @@ void mdp4_mixer_blend_setup(int mixer)
 			d_pipe = NULL;
 			continue;
 		}
+#ifdef PANTECH_LCD_QCPATCH_ALPHA_DROP_BUGFIX
 		alpha_drop = 0;	/* per stage */
+#endif
 		/* alpha channel is lost on VG pipe when using QSEED or M/N */
 		if (s_pipe->pipe_type == OVERLAY_TYPE_VIDEO &&
 			s_pipe->alpha_enable &&
@@ -3562,6 +3576,23 @@ int mdp4_overlay_set(struct fb_info *info, struct mdp_overlay *req)
 		mfd->sec_active = TRUE;
 	}
 
+#ifdef FEATURE_QUALCOMM_BUG_FIX_WRITEBACK_LOCKUP
+	//UI blt mode cover up 
+	 mdp4_calc_pipe_mdp_clk(mfd, pipe);
+
+	if (pipe->mixer_num == MDP4_MIXER0 && pipe->req_clk > mdp_max_clk &&
+		OVERLAY_TYPE_RGB == mdp4_overlay_format2type(pipe->src_format)) {
+		pr_debug("%s UI blt case, can't compose with MDP directly.\n", __func__);
+
+		if(req->id == MSMFB_NEW_REQUEST)
+			mdp4_overlay_pipe_free(pipe);
+
+		mutex_unlock(&mfd->dma->ov_mutex);
+
+		return -EINVAL;
+	}
+#endif /* FEATURE_QUALCOMM_BUG_FIX_WRITEBACK_LOCKUP */
+
 	/* return id back to user */
 	req->id = pipe->pipe_ndx;	/* pipe_ndx start from 1 */
 	pipe->req_data = *req;		/* keep original req */
@@ -3592,6 +3623,14 @@ int mdp4_overlay_set(struct fb_info *info, struct mdp_overlay *req)
 		fill_black_screen(FALSE, pipe->pipe_num, pipe->mixer_num);
 
 	mdp4_overlay_mdp_pipe_req(pipe, mfd);
+#ifdef FEATURE_QUALCOMM_BUG_FIX_WRITEBACK_LOCKUP
+	//video blt mode cover up
+	if(pipe->mixer_num == MDP4_MIXER0 && pipe->req_clk > mdp_max_clk &&
+		OVERLAY_TYPE_VIDEO == mdp4_overlay_format2type(pipe->src_format)) {
+		pr_debug("%s video blt case\n", __func__);
+		pipe->req_clk = mdp_max_clk; 
+	}
+#endif /* FEATURE_QUALCOMM_BUG_FIX_WRITEBACK_LOCKUP */
 
 	mutex_unlock(&mfd->dma->ov_mutex);
 

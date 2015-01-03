@@ -1101,7 +1101,9 @@ int mdp4_dsi_cmd_off(struct platform_device *pdev)
 	struct vsync_update *vp;
 	int undx;
 	int need_wait, cnt;
+#ifdef CONFIG_MACH_MSM8960_OSCAR
 	unsigned long flags;
+#endif
 	int mixer = 0;
 
 	pr_debug("%s+: pid=%d\n", __func__, current->pid);
@@ -1137,6 +1139,19 @@ int mdp4_dsi_cmd_off(struct platform_device *pdev)
 				break;
 		}
 	}
+
+#ifdef CONFIG_MACH_MSM8960_OSCAR
+	if(need_wait == 1 && cnt > 10) {
+		spin_lock_irqsave(&vctrl->spin_lock, flags);
+		vctrl->clk_enabled =1;
+		vctrl->clk_control =1;
+		spin_unlock_irqrestore(&vctrl->spin_lock, flags);
+		schedule_work(&vctrl->clk_work);
+		msleep(20);
+	}
+
+	pr_err("vctrl->clk_control = %d,  vctrl->clk_enabled = %d\n",vctrl->clk_control,vctrl->clk_enabled);
+#endif
 
 	if (cnt > 10) {
 		spin_lock_irqsave(&vctrl->spin_lock, flags);
