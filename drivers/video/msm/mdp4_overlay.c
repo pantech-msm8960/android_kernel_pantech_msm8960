@@ -3585,7 +3585,7 @@ int mdp4_overlay_set(struct fb_info *info, struct mdp_overlay *req)
 		pr_debug("%s UI blt case, can't compose with MDP directly.\n", __func__);
 
 		if(req->id == MSMFB_NEW_REQUEST)
-			mdp4_overlay_pipe_free(pipe);
+			mdp4_overlay_pipe_free(pipe,0);
 
 		mutex_unlock(&mfd->dma->ov_mutex);
 
