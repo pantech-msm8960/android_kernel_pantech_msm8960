@@ -27,13 +27,13 @@
 #include <mach/rpm-regulator.h>
 #include <mach/socinfo.h>
 
-#include "clock.h"
-#include "clock-local.h"
-#include "clock-rpm.h"
-#include "clock-voter.h"
-#include "clock-dss-8960.h"
-#include "devices.h"
-#include "clock-pll.h"
+#include "../../clock.h"
+#include "../../clock-local.h"
+#include "../../clock-rpm.h"
+#include "../../clock-voter.h"
+#include "../../clock-dss-8960.h"
+#include "../../devices.h"
+#include "../../clock-pll.h"
 
 #define REG(off)	(MSM_CLK_CTL_BASE + (off))
 #define REG_MM(off)	(MSM_MMSS_CLK_CTL_BASE + (off))

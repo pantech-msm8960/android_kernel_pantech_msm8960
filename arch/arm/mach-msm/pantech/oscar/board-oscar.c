@@ -90,19 +90,19 @@
 #include <mach/kgsl.h>
 #include <linux/fmem.h>
 
-#include "timer.h"
-#include "devices.h"
-#include "devices-msm8x60.h"
-#include "spm.h"
-#include "board-8960.h"
-#include "pm.h"
+#include "../../timer.h"
+#include "../../devices.h"
+#include "../../devices-msm8x60.h"
+#include "../../spm.h"
+#include "../../board-8960.h"
+#include "../../pm.h"
 #include <mach/cpuidle.h>
-#include "rpm_resources.h"
+#include "../../rpm_resources.h"
 #include <mach/mpm.h>
-#include "clock.h"
-#include "smd_private.h"
-#include "pm-boot.h"
-#include "msm_watchdog.h"
+#include "../../clock.h"
+#include "../../smd_private.h"
+#include "../../pm-boot.h"
+#include "../../msm_watchdog.h"
 
 #if defined(CONFIG_BT) && defined(CONFIG_BT_HCIUART_ATH3K)
 #include <linux/wlan_plat.h>
