@@ -859,7 +859,12 @@ struct msm_snapshot_pp_status {
 #define CFG_SET_AEC_LOCK              68
 #define CFG_SET_AWB_LOCK              69
 #endif
+#if defined(CONFIG_MACH_MSM8960_OSCAR)
 #define CFG_MAX                       70
+#elif defined(CONFIG_MACH_MSM8960_MAGNUS)
+#define CFG_FOCUS_MODE                70
+#define CFG_MAX                       71
+#endif
 #else
 #define CFG_MAX			47
 #endif
@@ -876,7 +881,9 @@ struct msm_snapshot_pp_status {
 #define SENSOR_HFR_60FPS_MODE           4
 #define SENSOR_HFR_90FPS_MODE           5
 #define SENSOR_HFR_120FPS_MODE          6
+#ifdef CONFIG_MACH_MSM8960_OSCAR
 #define SENSOR_ZSL_MODE                 7
+#endif
 #else
 #define SENSOR_PREVIEW_MODE		0
 #define SENSOR_SNAPSHOT_MODE		1
@@ -1153,7 +1160,7 @@ struct sensor_init_cfg {
 	uint8_t pict_res;
 };
 
-#ifdef CONFIG_PANTECH_CAMERA_OV8820
+#ifdef CONFIG_PANTECH_CAMERA
 //Start ## QCTK ##
 #define ROLLOFF_CALDATA_SIZE    (17 * 13)
 typedef struct
@@ -1170,7 +1177,7 @@ typedef struct
 
 struct sensor_calib_data {
 	/* Color Related Measurements */
-#ifdef CONFIG_PANTECH_CAMERA_OV8820
+#ifdef CONFIG_PANTECH_CAMERA
 	uint16_t r_over_g_5100K; //03_19_bsy 4100 cal add
 	uint16_t b_over_g_5100K; //03_19_bsy 4100 cal add
 	uint16_t gr_over_gb_5100K; //03_19_bsy 4100 cal add
@@ -1189,7 +1196,7 @@ struct sensor_calib_data {
 	uint16_t stroke_amt;
 	uint16_t af_pos_1m;
 	uint16_t af_pos_inf;
-#ifdef CONFIG_PANTECH_CAMERA_OV8820
+#ifdef CONFIG_PANTECH_CAMERA
 	//Start ## QCTK ##
 	/* Lens Shading Calibration Data */
 	rolloff_caldata_array_type rolloff_D50;
@@ -1235,7 +1242,7 @@ struct cord {
 	uint32_t y;
 };
 
-#ifdef CONFIG_PANTECH_CAMERA //def F_PANTECH_CAMERA_1080P_PREVIEW
+#ifdef CONFIG_PANTECH_CAMERA
 struct dimension_cfg {
 	uint16_t prev_dx;
 	uint16_t prev_dy;
@@ -1535,7 +1542,7 @@ struct msm_actuator_get_info_t {
 };
 
 enum af_camera_name {
-#ifdef CONFIG_PANTECH_CAMERA_OV8820
+#if defined(CONFIG_MACH_MSM8960_OSCAR)
 	ACTUATOR_MAIN_CAM_0_OV8820,
 #else
 	ACTUATOR_MAIN_CAM_0,
