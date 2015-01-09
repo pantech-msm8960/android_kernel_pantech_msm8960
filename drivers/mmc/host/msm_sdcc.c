@@ -90,6 +90,10 @@ static int msmsdcc_prep_xfer(struct msmsdcc_host *host, struct mmc_data
 static u64 dma_mask = DMA_BIT_MASK(32);
 static unsigned int msmsdcc_pwrsave = 1;
 
+#ifdef CONFIG_PANTECH_MMC
+static unsigned int mmc_err_cmd = -1;
+#endif /* CONFIG_PANTECH_MMC */
+
 static struct mmc_command dummy52cmd;
 static struct mmc_request dummy52mrq = {
 	.cmd = &dummy52cmd,
@@ -123,6 +127,11 @@ static const u32 tuning_block_128[] = {
 	0xDDFFFFFF, 0xDDFFFFFF, 0xFFFFFFDD, 0xFFFFFFBB,
 	0xFFFFBBBB, 0xFFFF77FF, 0xFF7777FF, 0xEEDDBB77
 };
+
+#ifdef CONFIG_PANTECH_MMC
+/* UX Performance 20120414_nari_LS1 */
+static unsigned int msmsdcc_slot_status(struct msmsdcc_host *host);
+#endif /* CONFIG_PANTECH_MMC */
 
 #if IRQ_DEBUG == 1
 static char *irq_status_bits[] = { "cmdcrcfail", "datcrcfail", "cmdtimeout",
@@ -1408,6 +1417,12 @@ msmsdcc_data_err(struct msmsdcc_host *host, struct mmc_data *data,
 				 data->mrq->cmd->opcode);
 			data->error = -ETIMEDOUT;
 			msmsdcc_dump_sdcc_state(host);
+#ifdef CONFIG_PANTECH_MMC
+			if (host->pdev_id == 3) {
+				mmc_err_cmd = data->mrq->cmd->opcode;
+				pr_debug("%s : mmc_err_cmd = %d\n", mmc_hostname(host->mmc), mmc_err_cmd);
+			}
+#endif /* CONFIG_PANTECH_MMC */
 		}
 		/* In case of DATA CRC/timeout error, execute tuning again */
 		if (host->tuning_needed && !host->tuning_in_progress)
@@ -1944,6 +1959,15 @@ msmsdcc_irq(int irq, void *dev_id)
 		}
 
 		if (host->curr.data) {
+#ifdef CONFIG_PANTECH_MMC
+			/* ls1 : factory reset error fix */
+			if (data && data->mrq && data->mrq->cmd) {
+				if(host->pdev_id == 3 && mmc_err_cmd == data->mrq->cmd->opcode){
+					mmc_err_cmd = -1;
+					pr_debug("%s: mmc_err_cmd init\n", mmc_hostname(host->mmc));
+				}
+			}
+#endif /* CONFIG_PANTECH_MMC */
 			/* Check for data errors */
 			if (status & (MCI_DATACRCFAIL|MCI_DATATIMEOUT|
 				      MCI_TXUNDERRUN|MCI_RXOVERRUN)) {
@@ -2246,6 +2270,16 @@ msmsdcc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		host->curr.req_tout_ms = 20000;
 	else
 		host->curr.req_tout_ms = MSM_MMC_REQ_TIMEOUT;
+
+#ifdef FEATURE_PANTECH_SAMSUNG_EMMC_BUG_FIX
+	/* 20121221 LS1-JHM modified : enabling BKOPS for eMMC performance */
+	if(mrq->cmd->opcode == MMC_SWITCH
+		&& ((mrq->cmd->arg >> 16)&0xFF) == EXT_CSD_BKOPS_START
+		){
+		host->curr.req_tout_ms = MSM_MMC_REQ_TIMEOUT*6;  // 1 min
+	}
+#endif /* FEATURE_PANTECH_SAMSUNG_EMMC_BUG_FIX */
+
 	/*
 	 * Kick the software request timeout timer here with the timeout
 	 * value identified above
@@ -2907,11 +2941,48 @@ static u32 msmsdcc_setup_pwr(struct msmsdcc_host *host, struct mmc_ios *ios)
 	u32 pwr = 0;
 	int ret = 0;
 	struct mmc_host *mmc = host->mmc;
+#ifdef CONFIG_PANTECH_MMC
+	/* UX Performance 20120414_nari_LS1 */
+	unsigned int slot_status;
+#endif /* CONFIG_PANTECH_MMC */
 
+#ifdef CONFIG_PANTECH_MMC
+	/* UX Performance 20120414_nari_LS1 */
+	if (host->plat->translate_vdd && !host->sdio_gpio_lpm) {
+		if (host->pdev_id == 3 && ios->power_mode == MMC_POWER_OFF) {
+			slot_status = msmsdcc_slot_status(host);
+			if (mmc->bus_ops != NULL && slot_status && mmc_err_cmd == -1) {
+				ret = host->plat->translate_vdd(mmc_dev(mmc), 1); /* always on sdcc power */
+			} else {
+				ret = host->plat->translate_vdd(mmc_dev(mmc), ios->vdd);
+				/* case sdcc_inserted & normal status */
+				if(!mmc->bus_ops && slot_status)
+					msleep(500);
+			}
+		} else {
+			ret = host->plat->translate_vdd(mmc_dev(mmc), ios->vdd);
+		}
+	} else if (!host->plat->translate_vdd && !host->sdio_gpio_lpm) {
+		if (host->pdev_id == 3 && ios->power_mode == MMC_POWER_OFF) {
+			slot_status = msmsdcc_slot_status(host);
+			if (mmc->bus_ops != NULL && slot_status && mmc_err_cmd == -1) {
+				ret = msmsdcc_setup_vreg(host, 1, true); /* always on sdcc power */
+			} else {
+				ret = msmsdcc_setup_vreg(host, !!ios->vdd, false);
+				/* case sdcc_inserted & normal status */
+				if (!mmc->bus_ops && slot_status)
+					msleep(500);
+			}
+		} else {
+			ret = msmsdcc_setup_vreg(host, !!ios->vdd, false);	
+		}
+	}
+#else /* CONFIG_PANTECH_MMC*/
 	if (host->plat->translate_vdd && !host->sdio_gpio_lpm)
 		ret = host->plat->translate_vdd(mmc_dev(mmc), ios->vdd);
 	else if (!host->plat->translate_vdd && !host->sdio_gpio_lpm)
 		ret = msmsdcc_setup_vreg(host, !!ios->vdd, false);
+#endif /* CONFIG_PANTECH_MMC*/
 
 	if (ret) {
 		pr_err("%s: Failed to setup voltage regulators\n",
