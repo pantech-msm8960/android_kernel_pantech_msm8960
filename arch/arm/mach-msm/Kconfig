@@ -921,7 +921,14 @@ config MACH_FSM9XXX_SURF
 config MACH_MSM_DUMMY
 	bool "NONE (No device)"
 
+config CUST_PANTECH_H
+	bool
+
 endmenu
+
+if CUST_PANTECH_H
+source "arch/arm/mach-msm/pantech/Kconfig"
+endif
 
 source "arch/arm/mach-msm/lge/Kconfig"
 
