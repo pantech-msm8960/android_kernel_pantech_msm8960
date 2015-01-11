@@ -35,6 +35,10 @@
 #include "modem_notifier.h"
 #include "ramdump.h"
 
+#ifdef FEATURE_PANTECH_WLAN_QCOM_PATCH //lee.eunsuk 20120423, SSR
+#define MODULE_NAME			"modem_8960"
+#endif
+
 static int crash_shutdown;
 
 static struct subsys_device *modem_8960_dev;
@@ -67,11 +71,13 @@ static void log_modem_sfr(void)
 	wmb();
 }
 
+#ifndef FEATURE_PANTECH_WLAN_QCOM_PATCH //lee.eunsuk 20120423, SSR
 static void restart_modem(void)
 {
 	log_modem_sfr();
 	subsystem_restart_dev(modem_8960_dev);
 }
+#endif
 
 static void modem_wdog_check(struct work_struct *work)
 {
@@ -85,7 +91,12 @@ static void modem_wdog_check(struct work_struct *work)
 	regval = readl_relaxed(q6_sw_wdog_addr);
 	if (!regval) {
 		pr_err("modem-8960: Modem watchdog wasn't activated!. Restarting the modem now.\n");
+#ifdef FEATURE_PANTECH_WLAN_QCOM_PATCH //lee.eunsuk 20120423, SSR
+ 		log_modem_sfr();
+		panic(MODULE_NAME "Modem crashed.");
+#else
 		restart_modem();
+#endif		
 	}
 
 	iounmap(q6_sw_wdog_addr);
@@ -101,7 +112,12 @@ static void smsm_state_cb(void *data, uint32_t old_state, uint32_t new_state)
 
 	if (new_state & SMSM_RESET) {
 		pr_err("Probable fatal error on the modem.\n");
+#ifdef FEATURE_PANTECH_WLAN_QCOM_PATCH //lee.eunsuk 20120423, SSR
+		log_modem_sfr();
+		panic(MODULE_NAME "Modem crashed.");
+#else
 		restart_modem();
+#endif
 	}
 }
 
@@ -222,11 +238,21 @@ static irqreturn_t modem_wdog_bite_irq(int irq, void *dev_id)
 
 	case Q6SW_WDOG_EXPIRED_IRQ:
 		pr_err("Watchdog bite received from modem software!\n");
+#ifdef FEATURE_PANTECH_WLAN_QCOM_PATCH //lee.eunsuk 20120423, SSR
+		log_modem_sfr();
+		panic(MODULE_NAME "Modem crashed.");
+#else
 		restart_modem();
+#endif
 		break;
 	case Q6FW_WDOG_EXPIRED_IRQ:
 		pr_err("Watchdog bite received from modem firmware!\n");
+#ifdef FEATURE_PANTECH_WLAN_QCOM_PATCH //lee.eunsuk 20120423, SSR
+		log_modem_sfr();
+		panic(MODULE_NAME "Modem crashed.");
+#else
 		restart_modem();
+#endif
 		break;
 	break;
 

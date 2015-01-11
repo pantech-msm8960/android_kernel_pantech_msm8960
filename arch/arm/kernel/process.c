@@ -337,6 +337,10 @@ void machine_restart(char *cmd)
 {
 	machine_shutdown();
 
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING 
+	pantech_set_restart_reason();
+#endif /* CONFIG_PANTECH_ERR_CRASH_LOGGING */
+
 	/* Flush the console to make sure all the relevant messages make it
 	 * out to the console drivers */
 	arm_machine_flush_console();
@@ -422,6 +426,59 @@ static void show_extra_register_data(struct pt_regs *regs, int nbytes)
 	set_fs(fs);
 }
 
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
+
+#define LINUX_SAVE_INFO_MAGIC 0xBADC0257
+
+struct mmu_type {
+	unsigned int transbase;
+	unsigned int dac;
+	unsigned int control;
+};
+
+struct save_info_type {
+	unsigned int magic_num;
+	struct pt_regs regs;
+#ifdef CONFIG_CPU_CP15_MMU
+	struct mmu_type mmu;
+#endif
+};
+
+static struct save_info_type save_info;
+
+struct pt_regs *__get_regs_crashed(void)
+{
+	return (struct pt_regs *)&save_info.regs;
+}
+
+void __save_regs_and_mmu(struct pt_regs *regs)
+{
+	memset((unsigned char *)&save_info,0,sizeof(struct save_info_type));
+
+	memcpy((unsigned char *)&save_info.regs,(unsigned char *)regs,sizeof(struct pt_regs));
+
+#ifdef CONFIG_CPU_CP15
+	{
+		unsigned int ctrl;
+#ifdef CONFIG_CPU_CP15_MMU
+		{
+			unsigned int transbase, dac;
+			asm("mrc p15, 0, %0, c2, c0\n\t"
+						"mrc p15, 0, %1, c3, c0\n"
+						: "=r" (transbase), "=r" (dac));
+
+			save_info.mmu.transbase = transbase; 
+			save_info.mmu.dac             = dac;
+		}
+#endif
+		asm("mrc p15, 0, %0, c1, c0\n" : "=r" (ctrl));
+		save_info.mmu.control      = ctrl;
+	}
+#endif
+	save_info.magic_num = LINUX_SAVE_INFO_MAGIC;
+}
+#endif /* CONFIG_PANTECH_ERR_CRASH_LOGGING */
+
 void __show_regs(struct pt_regs *regs)
 {
 	unsigned long flags;
@@ -433,12 +490,19 @@ void __show_regs(struct pt_regs *regs)
 #endif
 	set_crash_store_enable();
 #endif
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
+	char symbuf[64];
+#endif /* CONFIG_PANTECH_ERR_CRASH_LOGGING */
 	printk("CPU: %d    %s  (%s %.*s)\n",
 		raw_smp_processor_id(), print_tainted(),
 		init_utsname()->release,
 		(int)strcspn(init_utsname()->version, " "),
 		init_utsname()->version);
 	print_symbol("PC is at %s\n", instruction_pointer(regs));
+#ifdef CONFIG_PANTECH_ERR_CRASH_LOGGING
+	sprint_symbol(symbuf,instruction_pointer(regs));
+	printcrash("%s\n",symbuf);
+#endif /* CONFIG_PANTECH_ERR_CRASH_LOGGING */
 	print_symbol("LR is at %s\n", regs->ARM_lr);
 #ifdef CONFIG_LGE_CRASH_HANDLER
 	printk("pc : <%08lx>    lr : <%08lx>    psr: %08lx\n"
