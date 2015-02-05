@@ -816,6 +816,14 @@ config MACH_MSM8960_LIQUID
 	help
 	  Support for the Qualcomm MSM8960 LIQUID device.
 
+config MACH_MSM8960_OSCAR
+	depends on ARCH_MSM8960
+	bool "MSM8960 OSCAR"
+	default n
+	select CUST_PANTECH_H
+	help
+	  Support for the Qualcomm MSM8960 OSCAR device.
+
 config MACH_MSM8930_CDP
 	depends on ARCH_MSM8930
 	bool "MSM8930 CDP"
