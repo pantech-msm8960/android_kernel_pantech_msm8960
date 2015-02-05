@@ -172,6 +172,10 @@ struct qup_i2c_dev {
 	int                          i2c_gpios[ARRAY_SIZE(i2c_rsrcs)];
 };
 
+#if defined(T_OSCAR)
+#define EXIT_LOOP_VAL	100
+#endif
+
 #ifdef DEBUG
 static void
 qup_print_status(struct qup_i2c_dev *dev)
@@ -773,6 +777,9 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 	long timeout;
 	int err;
 
+#if defined(T_OSCAR)
+	int exit_infinite_loop_cnt = 0;
+#endif
 	pm_runtime_get_sync(dev->dev);
 	mutex_lock(&dev->mlock);
 
@@ -1024,9 +1031,22 @@ timeout_err:
 						readl_relaxed(dev->base
 							+ QUP_OPERATIONAL);
 					if (i % 2 == 0) {
+#if defined(T_OSCAR)
+						if ((rd_status &
+							QUP_IN_NOT_EMPTY) == 0) {
+							if (dev->err_irq == GSBI9_QUP_IRQ) {
+								exit_infinite_loop_cnt++;
+								dev_dbg(dev->dev, "sayuss GSBI # dev->err_irq = 0x%x\n",dev->err_irq);
+								if ( EXIT_LOOP_VAL < exit_infinite_loop_cnt )
+									goto	out_err;
+							}
+							break;
+						}
+#else
 						if ((rd_status &
 							QUP_IN_NOT_EMPTY) == 0)
 							break;
+#endif
 						dval = readl_relaxed(dev->base +
 							QUP_IN_FIFO_BASE);
 						dev->msg->buf[dev->pos] =

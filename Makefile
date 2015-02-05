@@ -373,6 +373,29 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
 		   -fno-delete-null-pointer-checks
+
+#// 20120105, albatros, imei �ּҰ��� ������� ����� ���ؼ�
+ifeq ($(OEM_PRODUCT_MANUFACTURER),PANTECH)
+LINUXINCLUDE += -I$(srctree)/../pantech/frameworks/sky_rawdata
+endif
+
+######################################################################
+# PANTECH_ANDROID_FLAGS
+######################################################################
+# Android SKY cust Feature
+# Add START. by sungwook on 2010-05-07
+#----------------------------------------------------------------------
+PANTECH_ANDROID_FLAGS := -DFEATURE_AARM_RELEASE_MODE \
+		   -I$(srctree)/include \
+		   -DT_OSCAR -I$(srctree)/include/pantech \
+		   -include $(srctree)/include/pantech/CUST_PANTECH.h \
+		   -DFIRM_VER=\"p8010.D1\" -DSYS_MODEL_NAME=\"OSCAR\" \
+		   -DPANTECH_MODEL_NAME=\"P8010\" \
+		   -DFS_USER_DATA_VER=8 \
+		   -DPANTECH_STORAGE_INTERNAL_EMUL
+
+KBUILD_CFLAGS += $(PANTECH_ANDROID_FLAGS) -D__KERNELBUILD__
+
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
 KBUILD_AFLAGS   := -D__ASSEMBLY__
