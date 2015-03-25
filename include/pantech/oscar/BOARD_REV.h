@@ -22,5 +22,14 @@ machine_is_msm8960_oscar() function
 #define TP10  0x40
 #define TP20  0x80
 
-#define BOARD_VER   TP20
+#define BOARD_VER			TP20
+#define T_OSCAR
+#define FIRM_VER			"p8010.D1"
+#define SYS_MODEL_NAME			"OSCAR"
+#define PANTECH_MODEL_NAME		"P8010"
+#define SYS_PROJECT_NAME		"OSCAR"
+#define FS_USER_DATA_VER		"8"
+#define PANTECH_STORAGE_INTERNAL_EMUL
+#define FEATURE_AARM_RELEASE_MODE
+
 #endif /*BOARD_REV_OSCAR_H */

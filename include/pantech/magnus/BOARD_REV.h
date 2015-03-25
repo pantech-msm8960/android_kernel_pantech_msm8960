@@ -22,5 +22,14 @@ machine_is_msm8960_magnus() function
 #define TP20  0x07
 #define TP30  0x08
 
-#define BOARD_VER   TP20
+#define BOARD_VER			TP20
+#define T_MAGNUS
+#define FIRM_VER			"KAUSS15"
+#define SYS_MODEL_NAME			"MAGNUS"
+#define PANTECH_MODEL_NAME		"PantechP9090"
+#define SYS_PROJECT_NAME		"MAGNUS"
+#define FS_USER_DATA_VER		"7"
+#define PANTECH_STORAGE_INTERNAL_EMUL
+#define FEATURE_AARM_RELEASE_MODE
+
 #endif /*BOARD_REV_MAGNUS_H*/

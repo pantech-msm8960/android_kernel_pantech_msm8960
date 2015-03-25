@@ -385,14 +385,9 @@ endif
 # Android SKY cust Feature
 # Add START. by sungwook on 2010-05-07
 #----------------------------------------------------------------------
-PANTECH_ANDROID_FLAGS := -DFEATURE_AARM_RELEASE_MODE \
-		   -I$(srctree)/include \
-		   -DT_OSCAR -I$(srctree)/include/pantech \
-		   -include $(srctree)/include/pantech/CUST_PANTECH.h \
-		   -DFIRM_VER=\"p8010.D1\" -DSYS_MODEL_NAME=\"OSCAR\" \
-		   -DPANTECH_MODEL_NAME=\"P8010\" \
-		   -DFS_USER_DATA_VER=8 \
-		   -DPANTECH_STORAGE_INTERNAL_EMUL
+PANTECH_ANDROID_FLAGS := -I$(srctree)/include \
+		   -I$(srctree)/include/pantech \
+		   -include $(srctree)/include/pantech/CUST_PANTECH.h
 
 KBUILD_CFLAGS += $(PANTECH_ANDROID_FLAGS) -D__KERNELBUILD__
 
