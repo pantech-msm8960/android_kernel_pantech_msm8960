@@ -22,7 +22,6 @@
 #include "msm_gemini_common.h"
 #include <mach/msm_bus.h>
 #include <mach/msm_bus_board.h>
-#include <linux/delay.h>
 
 #  define UINT32_MAX    (4294967295U)
 static int release_buf;
@@ -225,7 +224,6 @@ int msm_gemini_evt_get(struct msm_gemini_device *pgmn_dev,
 		return -EAGAIN;
 	}
 
-	memset(&ctrl_cmd, 0, sizeof(struct msm_gemini_ctrl_cmd));
 	ctrl_cmd.type = buf_p->vbuf.type;
 	kfree(buf_p);
 
@@ -268,7 +266,6 @@ void msm_gemini_err_irq(struct msm_gemini_device *pgmn_dev,
 	if (!rc)
 		GMN_PR_ERR("%s:%d] err err\n", __func__, __LINE__);
 
-	pgmn_dev->core_reset = 1;
 	return;
 }
 
@@ -358,7 +355,6 @@ int msm_gemini_we_pingpong_irq(struct msm_gemini_device *pgmn_dev,
 		GMN_DBG("%s:%d] no output return buffer\n", __func__,
 			__LINE__);
 		rc = -1;
-		return rc;
 	}
 
 	buf_out = msm_gemini_q_out(&pgmn_dev->output_buf_q);
@@ -583,8 +579,8 @@ int msm_gemini_input_buf_enqueue(struct msm_gemini_device *pgmn_dev,
 		return -1;
 	}
 
-	GMN_DBG("%s:%d] 0x%08x %d mode %d\n", __func__, __LINE__,
-		(int) buf_cmd.vaddr, buf_cmd.y_len, pgmn_dev->op_mode);
+	GMN_DBG("%s:%d] 0x%08x %d\n", __func__, __LINE__,
+		(int) buf_cmd.vaddr, buf_cmd.y_len);
 
 	if (pgmn_dev->op_mode == MSM_GEMINI_MODE_REALTIME_ENCODE) {
 		if(buf_cmd.y_off == 0)
@@ -727,7 +723,6 @@ int __msm_gemini_open(struct msm_gemini_device *pgmn_dev)
 	pgmn_dev->max_out_size = g_max_out_size;
 	pgmn_dev->out_frag_cnt = 0;
 	pgmn_dev->bus_perf_client = 0;
-	pgmn_dev->core_reset = 0;
 
 	if (p_bus_scale_data) {
 		GMN_DBG("%s:%d] register bus client", __func__, __LINE__);
@@ -760,16 +755,6 @@ int __msm_gemini_release(struct msm_gemini_device *pgmn_dev)
 	} else if (pgmn_dev->out_buf_set) {
 		msm_gemini_platform_p2v(pgmn_dev->out_buf.file,
 			&pgmn_dev->out_buf.handle);
-	}
-
-	if (pgmn_dev->core_reset) {
-		GMN_PR_ERR(KERN_ERR "gemini core reset cfg %x mode %d",
-			msm_gemini_io_r(0x8),
-			pgmn_dev->op_mode);
-		wmb();
-		msm_gemini_io_w(0x4, 0x8000);
-		msleep(5);
-		wmb();
 	}
 	msm_gemini_q_cleanup(&pgmn_dev->evt_q);
 	msm_gemini_q_cleanup(&pgmn_dev->output_rtn_q);
@@ -957,7 +942,7 @@ int msm_gemini_ioctl_reset(struct msm_gemini_device *pgmn_dev,
 		return -EFAULT;
 	}
 
-	pgmn_dev->op_mode = MSM_GEMINI_MODE_OFFLINE_ENCODE;
+	pgmn_dev->op_mode = ctrl_cmd.type;
 
 	rc = msm_gemini_core_reset(pgmn_dev->op_mode, pgmn_dev->base,
 		resource_size(pgmn_dev->mem));

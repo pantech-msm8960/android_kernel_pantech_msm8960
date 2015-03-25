@@ -15,7 +15,6 @@
 #define __MSM_VFE31_V4L2_H__
 
 #include <linux/bitops.h>
-#include "msm_vfe_stats_buf.h"
 
 #ifndef TRUE
 #define TRUE 1
@@ -216,13 +215,11 @@ enum vfe_output_state {
 
 #define V31_OPERATION_CFG_LEN     32
 
-#define V31_AXI_BUS_CMD_OFF       0x00000038
-#define V31_AXI_OUT_OFF           0x0000003C
-#define V31_AXI_OUT_LEN           240
+#define V31_AXI_OUT_OFF           0x00000038
+#define V31_AXI_OUT_LEN           212
+#define V31_AXI_CH_INF_LEN        24
 #define V31_AXI_CFG_LEN           47
 #define V31_AXI_RESERVED            1
-#define V31_AXI_RESERVED_LEN        4
-#define V31_AXI_BUS_CFG_LEN       16
 
 #define V31_FRAME_SKIP_OFF        0x00000504
 #define V31_FRAME_SKIP_LEN        32
@@ -698,7 +695,7 @@ struct vfe31_free_buf {
 struct vfe31_output_ch {
 	struct list_head free_buf_queue;
 	spinlock_t free_buf_lock;
-	uint32_t inst_handle;
+	uint16_t output_fmt;
 	int8_t ch0;
 	int8_t ch1;
 	int8_t ch2;
@@ -865,7 +862,14 @@ struct vfe31_ctrl_type {
 	spinlock_t  update_ack_lock;
 	spinlock_t  state_lock;
 	spinlock_t  io_lock;
-	spinlock_t  stats_bufq_lock;
+
+	spinlock_t  aec_ack_lock;
+	spinlock_t  awb_ack_lock;
+	spinlock_t  af_ack_lock;
+	spinlock_t  ihist_ack_lock;
+	spinlock_t  rs_ack_lock;
+	spinlock_t  cs_ack_lock;
+	spinlock_t  comp_stats_ack_lock;
 
 	uint32_t extlen;
 	void *extdata;
@@ -926,10 +930,6 @@ struct vfe31_ctrl_type {
 	uint32_t frame_skip_cnt;
 	uint32_t frame_skip_pattern;
 	uint32_t snapshot_frame_cnt;
-	struct msm_stats_bufq_ctrl stats_ctrl;
-	struct msm_stats_ops stats_ops;
-	struct device *iommu_ctx_imgwr;
-	struct device *iommu_ctx_misc;
 };
 
 enum VFE31_STATS_NUM {
